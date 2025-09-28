@@ -10,14 +10,13 @@ import { useMemo, useState } from 'react';
 
 const Dashboard: React.FC = () => {
   const { currentUser } = useUser();
-  const { documents, clearDocuments } = useRecentDocuments();
-  const { deleteDocument } = useRecentDocuments() as any;
-  const [detailsDoc, setDetailsDoc] = useState<RecentDocumentEntry | null>(null);
+  const { documents, clearDocuments, deleteDocument } = useRecentDocuments();
+
   const recentDocuments = useMemo(() => documents.slice(0, 5), [documents]);
 
   const getRoleSpecificContent = () => {
     switch (currentUser?.role) {
-      case 'Admin':
+      case 'admin':
         return {
           title: 'System Administration',
           subtitle: 'Manage users, system settings, and overall platform oversight',
@@ -31,7 +30,7 @@ const Dashboard: React.FC = () => {
             { type: 'info', message: 'System backup completed successfully' }
           ]
         };
-      case 'Executive':
+      case 'manager':
         return {
           title: 'Executive Overview',
           subtitle: 'Strategic insights, compliance monitoring, and high-level analytics',
@@ -46,7 +45,7 @@ const Dashboard: React.FC = () => {
             { type: 'success', message: 'Q1 compliance audit passed' }
           ]
         };
-      case 'Engineer':
+      case 'auditor':
         return {
           title: 'Technical Operations',
           subtitle: 'Technical documentation, system monitoring, and operational alerts',
@@ -61,7 +60,7 @@ const Dashboard: React.FC = () => {
             { type: 'info', message: 'System maintenance scheduled for Sunday' }
           ]
         };
-      default: // Staff
+      default: // staff
         return {
           title: 'Document Management',
           subtitle: 'Upload, search, and manage your documents efficiently',
@@ -84,16 +83,27 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          {roleContent.title}
-        </h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
-          {roleContent.subtitle}
-        </p>
-        <div className="mt-4 flex items-center space-x-2">
-          <Badge variant="info">{currentUser?.role}</Badge>
-          <Badge variant="success">{currentUser?.department}</Badge>
+      <div className="border-b border-border pb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">
+              {roleContent.title}
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              {roleContent.subtitle}
+            </p>
+            <div className="mt-4 flex items-center space-x-2">
+              <Badge variant="default">{currentUser?.role}</Badge>
+              <Badge variant="secondary">{currentUser?.department}</Badge>
+            </div>
+          </div>
+          <div className="hidden sm:block">
+            <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center">
+              <span className="text-2xl font-bold text-primary">
+                {currentUser?.name?.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -103,15 +113,17 @@ const Dashboard: React.FC = () => {
           <Card key={index} hover>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">
                     {stat.label}
                   </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-3xl font-bold text-foreground">
                     {stat.value}
                   </p>
                 </div>
-                <div className="text-3xl">{stat.icon}</div>
+                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl">{stat.icon}</span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -122,7 +134,7 @@ const Dashboard: React.FC = () => {
       {roleContent.alerts.length > 0 && (
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-foreground">
               System Alerts
             </h3>
           </CardHeader>
@@ -131,22 +143,22 @@ const Dashboard: React.FC = () => {
               {roleContent.alerts.map((alert, index) => (
                 <div
                   key={index}
-                  className={`flex items-center space-x-3 p-3 rounded-lg ${
+                  className={`flex items-center space-x-3 p-4 rounded-lg border ${
                     alert.type === 'warning'
-                      ? 'bg-yellow-50 border border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800'
+                      ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800'
                       : alert.type === 'success'
-                      ? 'bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800'
-                      : 'bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
+                      ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
+                      : 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
                   }`}
                 >
-                  <div className={`w-2 h-2 rounded-full ${
+                  <div className={`w-3 h-3 rounded-full ${
                     alert.type === 'warning'
                       ? 'bg-yellow-500'
                       : alert.type === 'success'
                       ? 'bg-green-500'
                       : 'bg-blue-500'
                   }`} />
-                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <p className="text-sm text-foreground font-medium">
                     {alert.message}
                   </p>
                 </div>
@@ -160,7 +172,7 @@ const Dashboard: React.FC = () => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-foreground">
               Recent Documents
             </h3>
             <div className="flex items-center gap-2">
@@ -168,41 +180,43 @@ const Dashboard: React.FC = () => {
                 Clear All
               </Button>
               <Link href="/upload">
-                <Button variant="primary" size="sm">Upload</Button>
+                <Button variant="default" size="sm">Upload</Button>
               </Link>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           {recentDocuments.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400">No documents yet. Upload to see them here.</p>
+            <div className="text-center py-8">
+              <span className="text-4xl mb-4 block">📄</span>
+              <p className="text-sm text-muted-foreground">No documents yet. Upload to see them here.</p>
+            </div>
           ) : (
             <div className="space-y-3">
               {recentDocuments.map(doc => (
-                <div key={doc.id} className="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
-                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                    <span className="text-blue-600 dark:text-blue-400 font-semibold text-xs">
+                <div key={doc.id} className="flex items-center gap-3 p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <span className="text-primary font-semibold text-xs">
                       {doc.fileType}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{doc.title}</p>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-sm font-medium text-foreground truncate">{doc.title}</p>
+                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                       <span>{new Date(doc.uploadedAt).toLocaleString()}</span>
                       <span>•</span>
                       <span>{doc.size}</span>
                       <span>•</span>
-                      <Badge size="sm" variant={doc.status === 'Processed' ? 'success' : doc.status === 'Pending' ? 'warning' : 'danger'}>
+                      <Badge size="sm" variant={doc.status === 'Processed' ? 'default' : doc.status === 'Pending' ? 'secondary' : 'destructive'}>
                         {doc.status}
                       </Badge>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setDetailsDoc(doc)}>View Details</Button>
                     <Link href={`/document/${doc.id}`}>
-                      <Button size="sm" variant="primary">Read Full Document</Button>
+                      <Button size="sm" variant="default">View</Button>
                     </Link>
-                    <Button size="sm" variant="danger" onClick={() => deleteDocument(doc.id)}>Delete</Button>
+                    <Button size="sm" variant="destructive" onClick={() => deleteDocument(doc.id)}>Delete</Button>
                   </div>
                 </div>
               ))}
@@ -214,26 +228,35 @@ const Dashboard: React.FC = () => {
       {/* Quick Actions */}
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h3 className="text-lg font-semibold text-foreground">
             Quick Actions
           </h3>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Link href="/upload">
-              <Button variant="primary" className="w-full">
+              <Button variant="default" className="w-full gap-2">
+                <span>📤</span>
                 Upload Document
               </Button>
             </Link>
             <Link href="/search">
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full gap-2">
+                <span>🔍</span>
                 Search Documents
               </Button>
             </Link>
+            <Link href="/compliance">
+              <Button variant="outline" className="w-full gap-2">
+                <span>✅</span>
+                View Compliance
+              </Button>
+            </Link>
             
-            {currentUser?.role === 'Admin' && (
+            {currentUser?.role === 'admin' && (
               <Link href="/admin">
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full gap-2">
+                  <span>⚙️</span>
                   Manage Users
                 </Button>
               </Link>
@@ -242,27 +265,7 @@ const Dashboard: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Details Modal */}
-      {detailsDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Document Details</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-gray-500">Title</span><span className="text-gray-900 dark:text-white ml-4 truncate">{detailsDoc.title}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Uploaded At</span><span className="text-gray-900 dark:text-white ml-4">{new Date(detailsDoc.uploadedAt).toLocaleString()}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">File Type</span><span className="text-gray-900 dark:text-white ml-4">{detailsDoc.fileType}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Size</span><span className="text-gray-900 dark:text-white ml-4">{detailsDoc.size}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Status</span><span className="text-gray-900 dark:text-white ml-4">{detailsDoc.status}</span></div>
-            </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setDetailsDoc(null)}>Close</Button>
-              <Link href={`/document/${detailsDoc.id}`}>
-                <Button variant="primary">Read Full Document</Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };

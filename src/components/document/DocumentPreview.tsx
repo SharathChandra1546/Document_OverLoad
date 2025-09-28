@@ -26,7 +26,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ documentId }) => {
           The requested document could not be found.
         </p>
         <Link href="/search">
-          <Button variant="primary">
+          <Button variant="default">
             Back to Search
           </Button>
         </Link>
@@ -67,7 +67,7 @@ const DocumentPreview: React.FC<DocumentPreviewProps> = ({ documentId }) => {
                 Back to Search
               </Button>
             </Link>
-            <Button variant="primary" onClick={handleTraceToSource}>
+            <Button variant="default" onClick={handleTraceToSource}>
               Trace to Source
             </Button>
           </div>
