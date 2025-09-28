@@ -182,7 +182,7 @@ const ComplianceTracker: React.FC = () => {
               <Button variant="outline" size="sm">
                 Export Report
               </Button>
-              <Button variant="primary" size="sm">
+              <Button variant="default" size="sm">
                 Add Compliance Item
               </Button>
             </div>
@@ -259,12 +259,12 @@ const ComplianceTracker: React.FC = () => {
                       View Details
                     </Button>
                     {item.status === 'Pending' && (
-                      <Button variant="primary" size="sm">
+                      <Button variant="default" size="sm">
                         Mark as Reviewed
                       </Button>
                     )}
                     {item.status === 'In Review' && (
-                      <Button variant="success" size="sm">
+                      <Button variant="default" size="sm">
                         Approve
                       </Button>
                     )}

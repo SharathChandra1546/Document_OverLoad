@@ -23,6 +23,7 @@ interface RecentDocumentsContextType {
   addDocument: (doc: RecentDocumentEntry) => void;
   clearDocuments: () => void;
   getDocumentById: (id: string) => RecentDocumentEntry | undefined;
+  deleteDocument: (id: string) => void;
 }
 
 const RecentDocumentsContext = createContext<RecentDocumentsContextType | undefined>(undefined);
@@ -119,7 +120,7 @@ export const RecentDocumentsProvider: React.FC<{ children: React.ReactNode }> = 
     clearDocuments,
     getDocumentById,
     deleteDocument
-  }), [documents, addDocument, clearDocuments, getDocumentById, deleteDocument]) as RecentDocumentsContextType & { deleteDocument: (id: string) => void };
+  }), [documents, addDocument, clearDocuments, getDocumentById, deleteDocument]);
 
   return (
     <RecentDocumentsContext.Provider value={value}>

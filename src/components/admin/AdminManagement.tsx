@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { UserRole } from '@/data/mockData';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
+
+type UserRole = 'Admin' | 'Staff' | 'Engineer' | 'Executive';
 
 const AdminManagement: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
@@ -57,7 +58,7 @@ const AdminManagement: React.FC = () => {
 
   const getRoleVariant = (role: UserRole) => {
     switch (role) {
-      case 'Admin': return 'danger';
+      case 'Admin': return 'destructive';
       case 'Executive': return 'warning';
       case 'Engineer': return 'info';
       case 'Staff': return 'success';
@@ -173,7 +174,7 @@ const AdminManagement: React.FC = () => {
                 </div>
                 
                 <Button 
-                  variant="primary" 
+                  variant="default" 
                   size="sm"
                   onClick={() => setShowAddUser(true)}
                 >
@@ -197,7 +198,7 @@ const AdminManagement: React.FC = () => {
                     <div className="flex items-center space-x-4">
                       <div className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {user.name.split(' ').map(n => n[0]).join('')}
+                          {user.name.split(' ').map((n: string) => n[0]).join('')}
                         </span>
                       </div>
                       <div>
@@ -403,7 +404,7 @@ const AdminManagement: React.FC = () => {
                   >
                     Cancel
                   </Button>
-                  <Button onClick={handleAddUser} variant="primary">
+                  <Button onClick={handleAddUser} variant="default">
                     Add User
                   </Button>
                 </div>

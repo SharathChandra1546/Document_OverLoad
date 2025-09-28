@@ -236,7 +236,7 @@ const SearchPage: React.FC = () => {
                       </div>
                       
                       <Link href={`/document/${result.document.id}`}>
-                        <Button variant="primary" size="sm">
+                        <Button variant="default" size="sm">
                           View Document
                         </Button>
                       </Link>

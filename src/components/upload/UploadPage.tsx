@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { useRecentDocuments } from '@/contexts/RecentDocumentsContext';
+import { processFileWithFlaskOCR } from '@/lib/api/flaskOcr';
 
 interface UploadedFile {
   file: File;
@@ -23,38 +24,60 @@ const UploadPage: React.FC = () => {
   const [expiryDate, setExpiryDate] = useState('');
   const { addDocument } = useRecentDocuments();
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setIsProcessing(true);
 
-    // Mock OCR processing
-    setTimeout(() => {
-      const mockOcrText = `Sample OCR extracted text from ${file.name}:
+    try {
+      // Use Flask OCR processing
+      const result = await processFileWithFlaskOCR(file);
+      
+      if (result.text) {
+        // Detect language based on content
+        const detectedLanguage = result.text.includes('മലയാളം') || 
+                               result.text.includes('കൊച്ചി') || 
+                               result.text.includes('മെട്രോ') ? 'Malayalam' : 'English';
 
-This is a mock OCR result that would typically contain the actual text extracted from the uploaded document. In a real application, this would be processed by an AI-powered OCR service.
+        setUploadedFile({
+          file,
+          preview: URL.createObjectURL(file),
+          ocrText: result.text,
+          detectedLanguage,
+          tags: [],
+          expiryDate: ''
+        });
+      } else {
+        console.error('OCR processing error:', result);
+        throw new Error('Failed to process file with OCR');
+      }
+    } catch (error) {
+      console.error('Error processing file:', error);
+      
+      // Fallback to mock processing if OCR fails
+      const fallbackText = `OCR Processing Error for ${file.name}:
 
-Key information detected:
-- Document type: ${file.type}
-- File size: ${(file.size / 1024 / 1024).toFixed(2)} MB
-- Language: ${Math.random() > 0.5 ? 'English' : 'Malayalam'}
+The OCR service encountered an error while processing this file. Please try again or contact support if the issue persists.
 
-The AI system has analyzed the document structure and content to provide accurate text extraction and metadata.`;
+Error: ${error instanceof Error ? error.message : 'Unknown error'}
 
-      const detectedLanguage = Math.random() > 0.5 ? 'English' : 'Malayalam';
+File Details:
+- Type: ${file.type}
+- Size: ${(file.size / 1024 / 1024).toFixed(2)} MB
+- Name: ${file.name}`;
 
       setUploadedFile({
         file,
         preview: URL.createObjectURL(file),
-        ocrText: mockOcrText,
-        detectedLanguage,
+        ocrText: fallbackText,
+        detectedLanguage: 'English',
         tags: [],
         expiryDate: ''
       });
-
+    } finally {
       setIsProcessing(false);
-    }, 2000);
+    }
   };
 
   const addTag = () => {
@@ -68,28 +91,64 @@ The AI system has analyzed the document structure and content to provide accurat
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (uploadedFile) {
-      // Add to Recent Documents context
-      const generatedId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const sizeMb = (uploadedFile.file.size / 1024 / 1024);
-      const entry = {
-        id: generatedId,
-        title: uploadedFile.file.name,
-        uploadedAt: new Date().toISOString(),
-        fileType: uploadedFile.file.type.split('/')[1]?.toUpperCase() || 'FILE',
-        size: `${sizeMb.toFixed(2)} MB`,
-        status: 'Processed' as const,
-        previewUrl: uploadedFile.preview,
-        textContent: uploadedFile.ocrText,
-        fileName: uploadedFile.file.name
-      };
-      addDocument(entry);
-      alert('Document saved and added to Recent Documents!');
-      // Reset form
-      setUploadedFile(null);
-      setTags([]);
-      setExpiryDate('');
+      try {
+        // Upload to documents API for processing
+        const formData = new FormData();
+        formData.append('file', uploadedFile.file);
+        
+        const response = await fetch('/api/documents', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          
+          // Add to Recent Documents context
+          const generatedId = result.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          const sizeMb = (uploadedFile.file.size / 1024 / 1024);
+          const entry = {
+            id: generatedId,
+            title: uploadedFile.file.name,
+            uploadedAt: result.uploadedAt || new Date().toISOString(),
+            fileType: uploadedFile.file.type.split('/')[1]?.toUpperCase() || 'FILE',
+            size: `${sizeMb.toFixed(2)} MB`,
+            status: 'Processed' as const,
+            previewUrl: uploadedFile.preview,
+            textContent: result.ocrText || uploadedFile.ocrText,
+            fileName: uploadedFile.file.name
+          };
+          addDocument(entry);
+          alert('Document processed with OCR and saved to Recent Documents!');
+        } else {
+          // Fallback to local processing
+          const generatedId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          const sizeMb = (uploadedFile.file.size / 1024 / 1024);
+          const entry = {
+            id: generatedId,
+            title: uploadedFile.file.name,
+            uploadedAt: new Date().toISOString(),
+            fileType: uploadedFile.file.type.split('/')[1]?.toUpperCase() || 'FILE',
+            size: `${sizeMb.toFixed(2)} MB`,
+            status: 'Processed' as const,
+            previewUrl: uploadedFile.preview,
+            textContent: uploadedFile.ocrText,
+            fileName: uploadedFile.file.name
+          };
+          addDocument(entry);
+          alert('Document saved locally to Recent Documents!');
+        }
+        
+        // Reset form
+        setUploadedFile(null);
+        setTags([]);
+        setExpiryDate('');
+      } catch (error) {
+        console.error('Error saving document:', error);
+        alert('Error saving document. Please try again.');
+      }
     }
   };
 
@@ -268,7 +327,7 @@ The AI system has analyzed the document structure and content to provide accurat
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleSave} variant="primary">
+                <Button onClick={handleSave} variant="default">
                   Save Document
                 </Button>
               </div>
