@@ -14,8 +14,8 @@ JWT_SECRET=demo-secret-key-change-in-production
 JWT_EXPIRATION=24h
 
 # API Keys (add your actual keys here)
-LLAMAPARSE_API_KEY=llx-HQmNSc...
-GROQ_API_KEY=gsk_...
+LLAMAPARSE_API_KEY=llx-HQmNSc4tnvZWKEadShHVRfr9KcKhwWEbJLouo9hVFs93gy2F
+GROQ_API_KEY=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
 
 # Milvus Configuration (optional - for vector search)
 MILVUS_HOST=localhost:19530
