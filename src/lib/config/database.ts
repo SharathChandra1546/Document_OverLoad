@@ -1,14 +1,18 @@
-// Database configuration
+// Database configuration - Supabase focused
 export const databaseConfig = {
   postgres: {
-    host: process.env.POSTGRES_HOST || 'localhost',
-    port: parseInt(process.env.POSTGRES_PORT || '5432'),
-    database: process.env.POSTGRES_DB || 'documind',
-    user: process.env.POSTGRES_USER || 'postgres',
-    password: process.env.POSTGRES_PASSWORD || 'password',
+    // Supabase PostgreSQL configuration using session pooler
+    host: process.env.SUPABASE_HOST || 'aws-1-us-east-2.pooler.supabase.com',
+    port: parseInt(process.env.SUPABASE_PORT || '5432'),
+    database: process.env.SUPABASE_DB || 'postgres',
+    user: process.env.SUPABASE_USER || 'postgres.enmydvcrqenckbllewaa',
+    password: process.env.SUPABASE_PASSWORD || 'hS7azyLGjgNPdmFt',
+    ssl: { rejectUnauthorized: false }, // Required for Supabase SSL
     max: 20, // Maximum number of clients in the pool
     idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-    connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+    connectionTimeoutMillis: 10000, // Increased timeout for Supabase
+    statement_timeout: 30000, // Statement timeout
+    query_timeout: 30000, // Query timeout
   },
   milvus: {
     address: process.env.MILVUS_HOST || 'localhost:19530',

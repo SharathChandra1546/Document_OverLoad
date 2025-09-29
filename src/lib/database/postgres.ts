@@ -11,7 +11,18 @@ class PostgreSQLConnection {
 
   private initializePool(): void {
     try {
-      this.pool = new Pool(databaseConfig.postgres);
+      // Enhanced configuration for Supabase
+      const config = {
+        ...databaseConfig.postgres,
+        // Additional Supabase-specific settings
+        keepAlive: true,
+        keepAliveInitialDelayMillis: 0,
+        // Connection retry settings
+        retryDelayMs: 1000,
+        retryAttempts: 3,
+      };
+      
+      this.pool = new Pool(config);
       
       // Handle pool errors
       this.pool.on('error', (err) => {
@@ -21,7 +32,7 @@ class PostgreSQLConnection {
 
       // Handle client connection
       this.pool.on('connect', () => {
-        console.log('PostgreSQL client connected');
+        console.log('PostgreSQL client connected to Supabase');
         this.isConnected = true;
       });
 
@@ -65,11 +76,30 @@ class PostgreSQLConnection {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
+        // Ensure connection is healthy before querying
+        if (!this.isConnected) {
+          await this.connect();
+        }
+        
         const result = await this.pool.query(text, params);
         return result;
       } catch (error) {
         lastError = error as Error;
         console.error(`PostgreSQL query attempt ${attempt} failed:`, error);
+        
+        // Check if it's a connection error and try to reconnect
+        if (error && typeof error === 'object' && 'code' in error) {
+          const pgError = error as any;
+          if (pgError.code === 'ECONNRESET' || pgError.code === 'ENOTFOUND' || pgError.message?.includes('Connection terminated')) {
+            console.log('Connection lost, attempting to reconnect...');
+            this.isConnected = false;
+            try {
+              await this.connect();
+            } catch (reconnectError) {
+              console.error('Reconnection failed:', reconnectError);
+            }
+          }
+        }
         
         if (attempt < maxRetries) {
           // Wait before retrying (exponential backoff)

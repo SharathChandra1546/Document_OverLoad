@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test:env": "node test-frontend-env.js",
-    "test:env:python": "python test-env-setup.py"
+    "test:env:python": "python test-env-setup.py",
+    "init:supabase": "node scripts/init-supabase.js",
+    "test:supabase": "node scripts/test-supabase-connection.js"
   },
   "dependencies": {
     "@zilliz/milvus2-sdk-node": "^2.6.0",

@@ -1,0 +1,29 @@
+# Supabase Database Configuration
+SUPABASE_HOST=db.enmydvcrqenckbllewaa.supabase.co
+SUPABASE_PORT=5432
+SUPABASE_DB=postgres
+SUPABASE_USER=postgres
+SUPABASE_PASSWORD=hS7azyLGjgNPdmFt
+
+# Supabase API Configuration
+SUPABASE_URL=https://enmydvcrqenckbllewaa.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVubXlkdmNycWVuY2tibGxld2FhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxMTU3ODMsImV4cCI6MjA3NDY5MTc4M30.B_7r7YsSkyInKJDnVobeF7RrurRH8hRtTh7HgnPUGfk
+
+# Application Configuration
+JWT_SECRET=demo-secret-key-change-in-production
+JWT_EXPIRATION=24h
+
+# API Keys (add your actual keys here)
+LLAMAPARSE_API_KEY=llx-HQmNSc...
+GROQ_API_KEY=gsk_...
+
+# Milvus Configuration (optional - for vector search)
+MILVUS_HOST=localhost:19530
+MILVUS_USERNAME=
+MILVUS_PASSWORD=
+MILVUS_DATABASE=default
+MILVUS_TOKEN=
+
+# File Upload Configuration
+UPLOAD_PATH=./uploads
+MAX_FILE_SIZE=10485760

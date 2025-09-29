@@ -11,6 +11,7 @@ interface UploadedFile {
   file: File;
   preview: string;
   ocrText: string;
+  summary?: string;
   detectedLanguage: 'English' | 'Malayalam';
   tags: string[];
   expiryDate: string;
@@ -19,6 +20,8 @@ interface UploadedFile {
 const UploadPage: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showOCRPreview, setShowOCRPreview] = useState(true);
+  const [showSummary, setShowSummary] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
@@ -33,6 +36,7 @@ const UploadPage: React.FC = () => {
     try {
       // Use Flask OCR processing
       const result = await processFileWithFlaskOCR(file);
+      console.log('📄 Flask OCR result:', result);
       
       if (result.text) {
         // Detect language based on content
@@ -44,6 +48,7 @@ const UploadPage: React.FC = () => {
           file,
           preview: URL.createObjectURL(file),
           ocrText: result.text,
+          summary: result.summary || undefined, // Use summary from Flask backend
           detectedLanguage,
           tags: [],
           expiryDate: ''
@@ -90,6 +95,7 @@ File Details:
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
+
 
   const handleSave = async () => {
     if (uploadedFile) {
@@ -232,28 +238,160 @@ File Details:
           </CardContent>
         </Card>
 
-        {/* OCR Preview Section */}
+        {/* Document Preview Section */}
         {uploadedFile && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  OCR Preview
+                  Document Preview
                 </h3>
                 <div className="flex items-center space-x-2">
                   <Badge variant="info">{uploadedFile.detectedLanguage}</Badge>
                   <Badge variant="success">Processed</Badge>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 max-h-64 overflow-y-auto">
-                  <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                    {uploadedFile.ocrText}
-                  </pre>
-                </div>
+              
+              {/* Preview Options */}
+              <div className="flex items-center space-x-4 mt-4">
+                <button
+                  onClick={() => {
+                    setShowOCRPreview(true);
+                    setShowSummary(false);
+                  }}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    showOCRPreview && !showSummary
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                      : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900 dark:hover:text-blue-300'
+                  }`}
+                >
+                  📝 OCR Text
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setShowOCRPreview(false);
+                    setShowSummary(true);
+                  }}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    showSummary && !showOCRPreview
+                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+                      : uploadedFile?.summary
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                      : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  🤖 AI Summary
+                </button>
+                
               </div>
+            </CardHeader>
+            
+            <CardContent>
+              {/* Show different content based on state */}
+              {showOCRPreview && !showSummary ? (
+                /* OCR Text Preview */
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      📝 Original Text (OCR Extraction)
+                    </h4>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">
+                        {uploadedFile.ocrText ? uploadedFile.ocrText.split(' ').length : 0} words
+                      </span>
+                      <span className="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">
+                        {uploadedFile.ocrText ? uploadedFile.ocrText.length : 0} chars
+                      </span>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 max-h-64 overflow-y-auto border border-gray-200 dark:border-gray-600">
+                    <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">
+                      {uploadedFile.ocrText}
+                    </pre>
+                  </div>
+                </div>
+              ) : showSummary && !showOCRPreview ? (
+                /* AI Summary Preview */
+                uploadedFile.summary ? (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        🤖 AI Summary (Groq Generated)
+                      </h4>
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2 py-1 bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300 text-xs rounded">
+                          {uploadedFile.summary.split(' ').length} words
+                        </span>
+                        <span className="px-2 py-1 bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300 text-xs rounded">
+                          {uploadedFile.summary.length} chars
+                        </span>
+                        <span className="px-2 py-1 bg-green-200 dark:bg-green-800 text-green-700 dark:text-green-300 text-xs rounded">
+                          {Math.round((1 - uploadedFile.summary.split(' ').length / (uploadedFile.ocrText ? uploadedFile.ocrText.split(' ') : 1).length) * 100)}% shorter
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Summary Content */}
+                    <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+                      <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                        {uploadedFile.summary}
+                      </p>
+                    </div>
+                    
+                    {/* Comparison Stats */}
+                    <div className="mt-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                      <div className="flex flex-wrap items-center gap-4 text-xs text-gray-600 dark:text-gray-400">
+                        <span>
+                          <strong>Original:</strong> {uploadedFile.ocrText ? uploadedFile.ocrText.split(' ').length : 0} words
+                        </span>
+                        <span>
+                          <strong>Summary:</strong> {uploadedFile.summary.split(' ').length} words
+                        </span>
+                        <span className="text-green-600 dark:text-green-400">
+                          <strong>Reduction:</strong> {uploadedFile.ocrText ? 
+                            Math.round((uploadedFile.ocrText.split(' ').length - uploadedFile.summary.split(' ').length)) : 0} words saved
+                        </span>
+                        <span className="text-blue-600 dark:text-blue-400">
+                          <strong>Compression:</strong> {Math.round((1 - uploadedFile.summary.split(' ').length / (uploadedFile.ocrText ? uploadedFile.ocrText.split(' ') : 1).length) * 100)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Show summary placeholder if summary tab is active but no summary exists */
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-yellow-600 dark:text-yellow-400">⚠️</span>
+                      <span className="text-sm text-yellow-700 dark:text-yellow-300">
+                        No summary available. Upload a file to generate OCR+Summary automatically.
+                      </span>
+                    </div>
+                  </div>
+                )
+              ) : (
+                /* Default state - show OCR */
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      📝 Original Text (OCR Extraction)
+                    </h4>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">
+                        {uploadedFile.ocrText ? uploadedFile.ocrText.split(' ').length : 0} words
+                      </span>
+                      <span className="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">
+                        {uploadedFile.ocrText ? uploadedFile.ocrText.length : 0} chars
+                      </span>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 max-h-64 overflow-y-auto border border-gray-200 dark:border-gray-600">
+                    <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">
+                      {uploadedFile.ocrText}
+                    </pre>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

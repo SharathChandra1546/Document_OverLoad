@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS documents (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'deleted', 'processing')),
     tags TEXT[],
-    content_text TEXT,
+    content_text TEXT, -- OCR extracted text (can be null for metadata-only storage)
+    summary TEXT, -- AI-generated summary using Groq
     vector_id VARCHAR(255), -- Reference to Milvus vector
     metadata JSONB
 );

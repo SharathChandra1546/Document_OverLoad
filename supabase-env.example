@@ -1,0 +1,26 @@
+# Supabase Database Configuration
+# Copy this file to .env.local and fill in your Supabase credentials
+
+# Supabase Database Connection
+SUPABASE_HOST=db.your-project-id.supabase.co
+SUPABASE_PORT=5432
+SUPABASE_DB=postgres
+SUPABASE_USER=postgres
+SUPABASE_PASSWORD=your-database-password
+
+# Supabase API Configuration
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Keep your existing environment variables
+# JWT_SECRET=your-jwt-secret
+# LLAMAPARSE_API_KEY=your-llamaparse-key
+# GROQ_API_KEY=your-groq-key
+
+# Milvus Configuration (if using)
+MILVUS_HOST=localhost:19530
+MILVUS_USERNAME=
+MILVUS_PASSWORD=
+MILVUS_DATABASE=default
+MILVUS_TOKEN=

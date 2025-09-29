@@ -4,8 +4,8 @@ This directory contains the database connection utilities, schema, and initializ
 
 ## Overview
 
-The application uses two databases:
-- **PostgreSQL**: For storing metadata (users, documents, audit logs, sessions)
+The application uses Supabase (managed PostgreSQL) as the primary database:
+- **Supabase PostgreSQL**: For storing metadata (users, documents, audit logs, sessions)
 - **Milvus**: For storing document vectors for semantic search (optional)
 
 ## Files Structure
@@ -26,39 +26,30 @@ src/lib/database/
 
 ### 1. Environment Variables
 
-Copy `.env.example` to `.env` and configure your database connections:
+Copy `supabase-env.local` to `.env.local` and configure your Supabase connection:
 
 ```bash
-# PostgreSQL Configuration
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=documind
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=password
+# Supabase Database Configuration
+SUPABASE_HOST=db.your-project-id.supabase.co
+SUPABASE_PORT=5432
+SUPABASE_DB=postgres
+SUPABASE_USER=postgres
+SUPABASE_PASSWORD=your_supabase_database_password
 
-# Milvus Configuration (optional)
-MILVUS_HOST=localhost:19530
+# Supabase API Configuration
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_key
 
 # Authentication
 JWT_SECRET=your-super-secret-jwt-key
 ```
 
-### 2. Database Installation
+### 2. Supabase Setup
 
-#### PostgreSQL
-```bash
-# Using Docker
-docker run --name postgres-documind \
-  -e POSTGRES_DB=documind \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=password \
-  -p 5432:5432 \
-  -d postgres:15
-
-# Or install locally (Ubuntu/Debian)
-sudo apt update
-sudo apt install postgresql postgresql-contrib
-```
+#### Create Supabase Project
+1. Go to [Supabase](https://supabase.com) and create a new project
+2. Get your project credentials from the Settings > Database section
+3. Update your `.env.local` file with the Supabase credentials
 
 #### Milvus (Optional)
 ```bash

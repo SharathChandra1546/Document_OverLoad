@@ -41,7 +41,8 @@ export interface Document {
   updated_at: Date;
   status: 'active' | 'deleted' | 'processing';
   tags: string[];
-  content_text: string | null;
+  content_text: string | null; // OCR extracted text (can be null for metadata-only storage)
+  summary: string | null; // AI-generated summary using Groq
   vector_id: string | null;
   metadata: Record<string, any> | null;
 }
@@ -55,6 +56,7 @@ export interface DocumentCreateInput {
   uploaded_by: string;
   tags?: string[];
   content_text?: string;
+  summary?: string;
   metadata?: Record<string, any>;
 }
 
@@ -63,6 +65,7 @@ export interface DocumentUpdateInput {
   status?: 'active' | 'deleted' | 'processing';
   tags?: string[];
   content_text?: string;
+  summary?: string;
   vector_id?: string;
   metadata?: Record<string, any>;
 }
