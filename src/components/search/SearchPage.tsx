@@ -2,52 +2,62 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+
 import { useRecentDocuments } from '@/contexts/RecentDocumentsContext';
+
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
+
+const filterOptions = ['PDF', 'DOCX', 'TXT', 'XLS', 'PPT'];
+const quickSearches = ['financial report', 'safety policies', 'contract', 'technical'];
 
 const SearchPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<'relevance' | 'date' | 'name'>('relevance');
+
   const { documents } = useRecentDocuments();
 
   const handleSearch = async () => {
     if (!query.trim()) return;
-
     setIsSearching(true);
     setHasSearched(true);
 
-    // Client-side search over RecentDocuments
     const q = query.toLowerCase();
+
     const results = documents
       .map(doc => {
         const haystack = [doc.title || '', doc.fileName || '', doc.textContent || ''].join(' ').toLowerCase();
         const matched = haystack.includes(q);
         if (!matched) return null;
+
         const relevanceScore = Math.min(1, Math.max(0.5, q.length / Math.max(10, haystack.length)));
         const snippetSource = (doc.textContent || '').toLowerCase();
         const idx = snippetSource.indexOf(q);
         const snippet = idx >= 0
           ? (doc.textContent || '').slice(Math.max(0, idx - 60), idx + q.length + 60)
           : (doc.textContent || '').slice(0, 120);
+
         return {
           document: {
             id: doc.id,
             title: doc.title,
             fileType: doc.fileType,
             fileSize: doc.size,
+            uploadedAt: doc.uploadedAt
           },
           snippet,
           relevanceScore,
           matchedTerms: [query],
         };
       })
-      .filter(Boolean);
+      .filter(Boolean) as any[];
 
-    setSearchResults(results as any[]);
+    setSearchResults(results);
     setIsSearching(false);
   };
 
@@ -55,6 +65,12 @@ const SearchPage: React.FC = () => {
     if (e.key === 'Enter') {
       handleSearch();
     }
+  };
+
+  const handleFilterToggle = (filter: string) => {
+    setSelectedFilters(prev =>
+      prev.includes(filter) ? prev.filter(f => f !== filter) : [...prev, filter]
+    );
   };
 
   const getRelevanceColor = (score: number) => {
@@ -69,176 +85,159 @@ const SearchPage: React.FC = () => {
     return 'Low';
   };
 
+  const filteredResults = searchResults.filter(result => {
+    if (selectedFilters.length === 0) return true;
+    return selectedFilters.includes(result.document.fileType);
+  });
+
+  const sortedResults = [...filteredResults].sort((a, b) => {
+    switch (sortBy) {
+      case 'date':
+        return new Date(b.document.uploadedAt || 0).getTime() - new Date(a.document.uploadedAt || 0).getTime();
+      case 'name':
+        return a.document.title.localeCompare(b.document.title);
+      default:
+        return b.relevanceScore - a.relevanceScore;
+    }
+  });
+
   return (
-    <div className="space-y-6">
-      <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Document Search
-        </h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
+    <div className="max-w-5xl mx-auto px-6 py-8 md:px-12 md:py-12">
+      {/* Header */}
+      <header className="mb-8 border-b border-slate-200 dark:border-slate-700 pb-4">
+        <h1 className="text-3xl font-semibold text-slate-900 dark:text-white mb-2">Document Search</h1>
+        <p className="text-lg text-slate-600 dark:text-slate-400">
           Search through your documents using natural language queries
         </p>
-      </div>
+      </header>
 
       {/* Search Bar */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="space-y-4">
-            <div className="relative">
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Search documents... (e.g., 'financial report', 'safety policies', 'contract agreement')"
-                className="w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-lg"
-              />
-              <button
-                onClick={handleSearch}
-                disabled={isSearching || !query.trim()}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
-              >
-                {isSearching ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                ) : (
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                )}
-              </button>
-            </div>
+      <div className="relative mb-6">
+        <input
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={handleKeyPress}
+          placeholder="Search documents... (e.g., 'financial report', 'safety policies', 'contract agreement')"
+          className="w-full px-6 py-3 pr-16 border-2 border-slate-200 dark:border-slate-600 rounded-2xl focus:ring-emerald-500 focus:ring-4 focus:ring-opacity-20 dark:focus:ring-emerald-400 dark:focus:ring-opacity-20 focus:border-emerald-500 dark:focus:border-emerald-400 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-lg placeholder-slate-400 dark:placeholder-slate-500 transition-shadow duration-300"
+        />
+        <Button
+          onClick={handleSearch}
+          variant="emerald"
+          className="absolute right-2 top-1/2 -translate-y-1/2 px-5 py-2 rounded-2xl"
+          disabled={isSearching}
+        >
+          Search
+        </Button>
+      </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setQuery('financial report')}
-              >
-                Financial Report
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setQuery('safety policies')}
-              >
-                Safety Policies
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setQuery('contract')}
-              >
-                Contract
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setQuery('technical')}
-              >
-                Technical
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Quick Searches */}
+      <div className="flex flex-wrap gap-3 mb-8">
+        {quickSearches.map(searchTerm => (
+          <Button
+            key={searchTerm}
+            variant="outline"
+            onClick={() => setQuery(searchTerm)}
+            className="h-10 px-4 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:border-emerald-300 dark:hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-300 transition-all duration-200"
+          >
+            {searchTerm}
+          </Button>
+        ))}
+      </div>
 
-      {/* Search Results */}
+      {/* Filters and Sort */}
       {hasSearched && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Search Results
-            </h2>
-            {!isSearching && (
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
-              </span>
+        <section className="mb-12">
+          <div className="flex flex-wrap items-center gap-4 mb-4">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">File Type Filters:</span>
+            {filterOptions.map(filter => {
+              const isSelected = selectedFilters.includes(filter);
+              return (
+                <button
+                  key={filter}
+                  onClick={() => handleFilterToggle(filter)}
+                  className={`px-5 py-2 text-sm font-medium rounded-xl border-2 transition-all duration-300 hover:scale-105 ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-emerald-500 to-blue-600 text-white border-transparent shadow-lg'
+                      : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600 hover:border-emerald-300 dark:hover:border-emerald-500'
+                  }`}
+                >
+                  {filter}
+                </button>
+              );
+            })}
+            {selectedFilters.length > 0 && (
+              <button
+                onClick={() => setSelectedFilters([])}
+                className="px-6 py-2 text-sm font-semibold bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-2 border-red-200 dark:border-red-700 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-all duration-200"
+              >
+                Clear Filters
+              </button>
             )}
           </div>
 
+          <div className="max-w-xs">
+            <label htmlFor="sortBy" className="block mb-1 font-semibold text-slate-700 dark:text-slate-300">
+              Sort By
+            </label>
+            <select
+              id="sortBy"
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value as any)}
+              className="w-full px-5 py-2 bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-xl text-slate-700 dark:text-slate-200 focus:border-emerald-500 dark:focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 transition-all duration-300"
+            >
+              <option value="relevance">Relevance</option>
+              <option value="date">Date</option>
+              <option value="name">Name</option>
+            </select>
+          </div>
+        </section>
+      )}
+
+      {/* Search Results */}
+      {hasSearched && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4 text-slate-800 dark:text-white">
+            Search Results
+            {!isSearching && (
+              <span className="ml-2 text-sm font-normal text-slate-600 dark:text-slate-400">
+                ({sortedResults.length} result{sortedResults.length !== 1 ? 's' : ''} found)
+              </span>
+            )}
+          </h2>
+
           {isSearching ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Searching through documents...
-                </p>
-              </CardContent>
-            </Card>
-          ) : searchResults.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0118 12a8 8 0 10-8 8 7.962 7.962 0 005.291-1.709" />
-                </svg>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  No results found
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  Try different keywords or check your spelling
-                </p>
-              </CardContent>
-            </Card>
+            <p className="text-slate-700 dark:text-slate-300">Searching through documents...</p>
+          ) : sortedResults.length === 0 ? (
+            <div className="text-center py-12 text-slate-700 dark:text-slate-400">
+              <p className="mb-2 font-semibold">No results found</p>
+              <p>Try different keywords or check your spelling</p>
+            </div>
           ) : (
-            <div className="space-y-4">
-              {searchResults.map((result, index) => (
-                <Card key={index} hover>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            {result.document.title}
-                          </h3>
-                          
-                          <Badge variant={getRelevanceColor(result.relevanceScore) as any}>
-                            {getRelevanceText(result.relevanceScore)} Relevance
-                          </Badge>
-                        </div>
-                        
-                        <p className="text-gray-600 dark:text-gray-400 mb-3">
-                          {result.snippet}
-                        </p>
-                        
-                        <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
-                          <span>Size: {result.document.fileSize}</span>
-                        </div>
-                        
-                        
-                        
-                        {result.matchedTerms.length > 0 && (
-                          <div className="mb-3">
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                              Matched terms: 
-                            </span>
-                            <div className="inline-flex flex-wrap gap-1 ml-2">
-                              {result.matchedTerms.map((term: string, termIndex: number) => (
-                                <span key={termIndex} className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded">
-                                  {term}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+            <div className="space-y-6">
+              {sortedResults.map((result, index) => (
+                <Card key={result.document.id} className="bg-white dark:bg-slate-800 shadow-md rounded-xl p-6">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xl font-semibold text-emerald-600 dark:text-emerald-400 truncate">{result.document.title}</h3>
+                      <Badge type={getRelevanceColor(result.relevanceScore)}>{getRelevanceText(result.relevanceScore)} Relevance</Badge>
                     </div>
-                    
-                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-gray-200 dark:bg-gray-600 rounded flex items-center justify-center">
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                            {result.document.fileType}
-                          </span>
-                        </div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          {result.document.fileType} • {result.document.fileSize}
+                  </CardHeader>
+                  <CardContent>
+                    <p className="mb-3 text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{result.snippet}</p>
+                    <div className="flex flex-wrap gap-4 items-center text-sm text-slate-600 dark:text-slate-400">
+                      <span>{result.document.fileType} • {result.document.fileSize}</span>
+                      <span>Score: {Math.round(result.relevanceScore * 100)}%</span>
+                      {result.matchedTerms.length > 0 && (
+                        <span className="flex gap-2 items-center">
+                          Matched terms:
+                          {result.matchedTerms.map((term: string, termIndex: number) => (
+                            <Badge key={`${term}-${termIndex}`} type="info">{term}</Badge>
+                          ))}
                         </span>
-                      </div>
-                      
-                      <Link href={`/document/${result.document.id}`}>
-                        <Button variant="default" size="sm">
-                          View Document
-                        </Button>
+                      )}
+                      <Link href={`/documents/${result.document.id}`} className="ml-auto text-emerald-600 hover:text-emerald-400 dark:hover:text-emerald-500 transition-colors" aria-label="View Document">
+                        👁️ View Document
                       </Link>
                     </div>
                   </CardContent>
@@ -246,41 +245,33 @@ const SearchPage: React.FC = () => {
               ))}
             </div>
           )}
-        </div>
+        </section>
       )}
 
       {/* Search Tips */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Search Tips
-          </h3>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                Natural Language Queries
-              </h4>
-              <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                <li>• "Show me all financial reports from 2024"</li>
-                <li>• "Find documents about safety policies"</li>
-                <li>• "Contract agreements that are expiring soon"</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                Advanced Search
-              </h4>
-              <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                <li>• Use quotes for exact phrases</li>
-                <li>• Combine keywords with AND/OR</li>
-                <li>• Filter by language, date, or tags</li>
-              </ul>
-            </div>
+      {!hasSearched && (
+        <section className="mt-20 px-6 py-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-slate-900 dark:text-white max-w-3xl mx-auto">
+          <h2 className="text-2xl font-semibold mb-4">Search Tips</h2>
+
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-2">Natural Language Queries</h3>
+            <ul className="list-disc list-inside space-y-1">
+              <li>"Show me all financial reports from 2024"</li>
+              <li>"Find documents about safety policies"</li>
+              <li>"Contract agreements that are expiring soon"</li>
+            </ul>
           </div>
-        </CardContent>
-      </Card>
+
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Advanced Search</h3>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Use quotes for exact phrases</li>
+              <li>Combine keywords with AND/OR</li>
+              <li>Filter by file type or content</li>
+            </ul>
+          </div>
+        </section>
+      )}
     </div>
   );
 };

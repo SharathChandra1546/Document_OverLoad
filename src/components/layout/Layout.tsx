@@ -12,20 +12,12 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { isAuthenticated } = useUser();
 
-  if (!isAuthenticated) {
-    return <>{children}</>;
-  }
-
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
       <Navigation />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-6 bg-muted/20">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
-        </main>
+      <div className="flex flex-1">
+        {isAuthenticated && <Sidebar />}
+        <main className="flex-1 p-6 overflow-auto">{children}</main>
       </div>
     </div>
   );

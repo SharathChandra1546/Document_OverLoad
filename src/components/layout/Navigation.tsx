@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
+
 import { cn } from '@/utils/cn';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import Button from '@/components/ui/Button';
@@ -18,111 +19,72 @@ const Navigation: React.FC<NavigationProps> = ({ className = '' }) => {
   const { currentUser, logout, isAuthenticated } = useUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const navigationItems: any[] = [];
-  const adminItems: any[] = [];
-
-  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
-
   if (!isAuthenticated) {
     return (
-      <nav className={cn('bg-background border-b border-border', className)}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">DM</span>
-              </div>
-              <span className="text-xl font-bold text-foreground">DocuMind AI</span>
-            </Link>
-
-            {/* Theme Toggle */}
-            <div className="flex items-center gap-4">
-              <ThemeToggle size="sm" />
-              <div className="flex items-center gap-2">
-                <Link href="/login">
-                  <Button variant="ghost" size="sm">Sign In</Button>
-                </Link>
-                <Link href="/signup">
-                  <Button variant="default" size="sm">Sign Up</Button>
-                </Link>
-              </div>
-            </div>
-          </div>
+      <nav className={cn('flex items-center justify-between p-4 bg-background border-b', className)}>
+        {/* Logo */}
+        <Link href="/" className="text-xl font-bold">
+          DM
+        </Link>
+        <div className="flex items-center space-x-4">
+          <ThemeToggle />
+          <Link href="/signin">
+            <Button variant="outline">Sign In</Button>
+          </Link>
+          <Link href="/signup">
+            <Button>Sign Up</Button>
+          </Link>
         </div>
       </nav>
     );
   }
 
   return (
-    <nav className={cn('bg-background border-b border-border shadow-sm', className)}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">DM</span>
+    <nav className={cn('flex items-center justify-between p-4 bg-background border-b', className)}>
+      {/* Logo */}
+      <Link href="/" className="text-xl font-bold">
+        DM
+      </Link>
+      
+      <div className="flex items-center space-x-4">
+        <ThemeToggle />
+        
+        {/* User menu */}
+        <div className="relative">
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="flex items-center rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            aria-label="Toggle user menu"
+          >
+            <span className="sr-only">Open user menu</span>
+            <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold uppercase">
+              {currentUser?.name?.charAt(0) || 'U'}
             </div>
-            <span className="text-xl font-bold text-foreground">DocuMind AI</span>
-          </Link>
+          </button>
 
-          {/* Desktop Navigation - Removed duplicates, using sidebar instead */}
-          <div className="hidden md:flex items-center gap-1">
-            {/* Navigation moved to sidebar */}
-          </div>
-
-          {/* Right side - User menu and theme toggle */}
-          <div className="flex items-center gap-3">
-            <ThemeToggle size="sm" />
-            
-            {/* User Menu */}
-            <div className="relative">
-              <div className="flex items-center gap-3">
-                <div className="hidden sm:block text-right">
-                  <p className="text-sm font-medium text-foreground">{currentUser?.name}</p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
-                    {currentUser?.role === 'admin' && (
-                      <Badge variant="default" size="sm">Admin</Badge>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-medium text-primary">
-                    {currentUser?.name?.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                
+          {isMobileMenuOpen && (
+            <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-lg z-50">
+              <div className="p-4 border-b border-border bg-card">
+                <p className="text-sm font-semibold text-card-foreground">{currentUser?.name?.toUpperCase()}</p>
+                <p className="text-xs font-medium text-muted-foreground">{currentUser?.email}</p>
+                {currentUser?.role === 'admin' && (
+                  <Badge variant="destructive" className="mt-2">
+                    Admin
+                  </Badge>
+                )}
+              </div>
+              <div className="p-2 bg-card">
                 <Button
-                  variant="ghost"
-                  size="sm"
                   onClick={logout}
-                  className="text-muted-foreground hover:text-destructive"
+                  variant="destructive"
+                  className="w-full rounded-lg px-4 py-2 transition-transform duration-200 ease-in-out transform hover:scale-105 hover:brightness-110 hover:shadow-lg hover:shadow-red-500/50"
                 >
                   Sign Out
                 </Button>
               </div>
             </div>
-
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              aria-label="Toggle mobile menu"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {isMobileMenuOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                )}
-              </svg>
-            </button>
-          </div>
+          )}
         </div>
-
-        {/* Mobile Navigation - Removed, using sidebar for navigation */}
       </div>
     </nav>
   );

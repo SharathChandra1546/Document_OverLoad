@@ -16,7 +16,6 @@ interface UploadedFile {
   tags: string[];
   expiryDate: string;
 }
-
 const UploadPage: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);

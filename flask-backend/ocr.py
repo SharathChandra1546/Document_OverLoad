@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 import PyPDF2
 from PIL import Image
 import io
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 LLAMAPARSE_API_KEY = os.environ.get('LLAMAPARSE_API_KEY', '')
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
+LLAMAPARSE_API_URL = os.environ.get('LLAMAPARSE_API_URL', 'https://api.llamacloud.com/llamaparse/v1/parse')
 
 # Check if API keys are available
 if not LLAMAPARSE_API_KEY:
@@ -38,10 +39,10 @@ def process_file(file_path: str) -> Dict[str, Any]:
         dict: Dictionary containing the extracted text and summary
     """
     try:
-        # Parse document to extract text
+        # Parse document to extract text (prefer LlamaParse when available)
         raw_text = parse_document(file_path)
-        
-        # Generate summary using Groq API
+
+        # Generate summary using Groq API (map-reduce over chunks for long docs)
         summary = summarize_text(raw_text)
         
         return {
@@ -78,6 +79,11 @@ def parse_document(file_path: str) -> str:
         
         # Handle different file types
         if extension == '.pdf':
+            # Try LlamaParse first if API key provided
+            if LLAMAPARSE_API_KEY:
+                parsed = parse_with_llamaparse(file_path)
+                if parsed:
+                    return parsed
             return parse_pdf(file_path)
         elif extension in ['.jpg', '.jpeg', '.png', '.tiff', '.bmp']:
             return parse_image(file_path)
@@ -91,6 +97,42 @@ def parse_document(file_path: str) -> str:
         logger.error(f"Error parsing file {file_path}: {str(e)}")
         # Return a mock response for demonstration
         return f"Mock OCR text extracted from {file_path}\nThis is simulated OCR content.\nIn a real implementation, this would contain the actual text extracted from the document."
+
+def parse_with_llamaparse(file_path: str) -> str:
+    """
+    Attempt to parse document with LlamaParse API.
+
+    Returns an empty string if parsing fails to allow graceful fallback.
+    """
+    try:
+        if not LLAMAPARSE_API_KEY:
+            return ''
+
+        logger.info(f"Attempting LlamaParse for: {file_path}")
+        headers = {
+            'Authorization': f"Bearer {LLAMAPARSE_API_KEY}"
+        }
+        files = {
+            'file': (os.path.basename(file_path), open(file_path, 'rb'))
+        }
+        # Optional parameters – adjust as needed
+        data = {
+            'output_format': 'text',
+        }
+        resp = requests.post(LLAMAPARSE_API_URL, headers=headers, files=files, data=data, timeout=120)
+        if resp.status_code == 200:
+            text = resp.text if resp.text else ''
+            if text.strip():
+                logger.info("LlamaParse succeeded")
+                return text
+            else:
+                logger.warning("LlamaParse returned empty text; falling back")
+                return ''
+        logger.error(f"LlamaParse error {resp.status_code}: {resp.text}")
+        return ''
+    except Exception as e:
+        logger.error(f"LlamaParse exception: {str(e)}")
+        return ''
 
 def parse_pdf(file_path: str) -> str:
     """
@@ -154,37 +196,139 @@ def summarize_text(text: str) -> str:
         
         logger.info(f"Summarizing text of length: {len(text)}")
         
-        # Use Groq API for summarization
-        headers = {
-            'Authorization': f'Bearer {GROQ_API_KEY}',
-            'Content-Type': 'application/json'
-        }
-        
-        payload = {
-            'model': 'openai/gpt-oss-20b',
-            'messages': [{
-                'role': 'user', 
-                'content': f"Summarize this text related to Kochi Metro Rail operations:\n\n{text}"
-            }],
-            'temperature': 0.7,
-            'max_tokens': 1000
-        }
-
-        response = requests.post(GROQ_API_URL, headers=headers, json=payload)
-
-        if response.status_code == 200:
-            data = response.json()
-            summary = data['choices'][0]['message']['content'] or 'Summary generation failed'
-            logger.info(f"Groq generated summary length: {len(summary)}")
-            return summary
-        else:
-            logger.error(f"Groq API error: {response.status_code} - {response.text}")
-            return mock_summarize_text(text)
+        # Delegate to the new Groq summarization tailored for proportional, simple-English output
+        return summarize_text_with_groq(text)
             
     except Exception as e:
         logger.error(f"Error summarizing text: {str(e)}")
         # Return a mock response for demonstration
         return mock_summarize_text(text)
+
+def groq_summarize_single(text: str, headers: Dict[str, str], *, model: str = 'llama3-70b-8192', temperature: float = 0.5, max_tokens: int = 3500) -> str:
+    """
+    Summarize a single chunk via Groq with a stronger, more general prompt and higher limits.
+    """
+    try:
+        prompt = (
+            "Summarize the following document text accurately and comprehensively.\n"
+            "- Keep critical details and structure.\n"
+            "- Use clear paragraphs and bullet points when helpful.\n\n"
+            f"Text:\n{text}"
+        )
+        payload = {
+            'model': model,
+            'messages': [
+                { 'role': 'system', 'content': 'You are an expert summarizer focused on accuracy and coverage.' },
+                { 'role': 'user', 'content': prompt }
+            ],
+            'temperature': temperature,
+            'max_tokens': max_tokens
+        }
+        response = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=120)
+        if response.status_code == 200:
+            data = response.json()
+            return data['choices'][0]['message']['content'] or 'Summary generation failed'
+        logger.error(f"Groq single-chunk error {response.status_code}: {response.text}")
+        return mock_summarize_text(text)
+    except Exception as e:
+        logger.error(f"Groq single-chunk exception: {str(e)}")
+        return mock_summarize_text(text)
+
+def chunk_text(text: str, max_chunk_chars: int = 6000, overlap: int = 200) -> List[str]:
+    """
+    Split text into overlapping chunks to preserve context across boundaries.
+    """
+    if not text:
+        return []
+    if len(text) <= max_chunk_chars:
+        return [text]
+    chunks: List[str] = []
+    start = 0
+    n = len(text)
+    while start < n:
+        end = min(start + max_chunk_chars, n)
+        chunk = text[start:end]
+        chunks.append(chunk)
+        if end == n:
+            break
+        start = end - overlap if end - overlap > start else end
+    return chunks
+
+def summarize_text_with_groq(parsed_text: str) -> str:
+    """
+    Summarize parsed document text using Groq with a simple-English, proportional-length summary.
+
+    Uses a single call for shorter inputs; falls back to map-reduce (chunk + synthesize)
+    for long inputs. Always aims for easy-to-understand English.
+    """
+    try:
+        if not GROQ_API_KEY:
+            logger.warning('Groq API key not available, using mock summarization')
+            return mock_summarize_text(parsed_text)
+
+        headers = {
+            'Authorization': f'Bearer {GROQ_API_KEY}',
+            'Content-Type': 'application/json'
+        }
+
+        text = parsed_text or ''
+        if not text.strip():
+            return 'No content to summarize.'
+
+        # If reasonably small, single pass with proportional instruction
+        # Rough heuristic: <= 8000 chars -> single call
+        if len(text) <= 8000:
+            proportional_tokens = min(2000, max(400, len(text) // 4))
+            return groq_summarize_single(
+                text,
+                headers,
+                model='llama3-70b-8192',
+                temperature=0.5,
+                max_tokens=proportional_tokens,
+            )
+
+        # Otherwise chunk + merge for longer inputs
+        chunks = chunk_text(text, max_chunk_chars=6000)
+        partial_summaries: List[str] = []
+        for idx, chunk in enumerate(chunks):
+            logger.info(f"Summarizing chunk {idx+1}/{len(chunks)} (len={len(chunk)})")
+            partial = groq_summarize_single(
+                chunk,
+                headers,
+                model='llama3-70b-8192',
+                temperature=0.5,
+                max_tokens=2800,
+            )
+            partial_summaries.append(partial)
+
+        synthesis_prompt = (
+            "Provide a clear, simple English summary of the following partial summaries.\n"
+            "Make it proportional to the document length, easy to scan, and concise.\n"
+            "Include short paragraphs and 5-10 bullet points for key takeaways.\n\n"
+            f"Partial summaries:\n{('\n\n').join(f'- {s}' for s in partial_summaries)}\n\n"
+            "Now produce the final summary."
+        )
+
+        payload = {
+            'model': 'llama3-70b-8192',
+            'messages': [
+                { 'role': 'system', 'content': 'Always write in simple, easy-to-understand English.' },
+                { 'role': 'user', 'content': synthesis_prompt }
+            ],
+            'temperature': 0.4,
+            'max_tokens': 4000
+        }
+        response = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=120)
+        if response.status_code == 200:
+            data = response.json()
+            final_summary = data['choices'][0]['message']['content'] or 'Summary generation failed'
+            logger.info(f"Groq final summary length: {len(final_summary)}")
+            return final_summary
+        logger.error(f"Groq synthesis error {response.status_code}: {response.text}")
+        return '\n\n'.join(partial_summaries)
+    except Exception as e:
+        logger.error(f"Error in summarize_text_with_groq: {str(e)}")
+        return mock_summarize_text(parsed_text)
 
 def mock_summarize_text(text: str) -> str:
     """
